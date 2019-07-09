@@ -168,11 +168,11 @@
   var factoryMethods = factory(global)
 
   var appGuess = {
-    // apiRoot: 'http://elahive.club/api/', // 接口路径
-    apiRoot: 'http://127.0.0.1:8080/', // 本地服务器已开启跨域支持
+    apiRoot: 'http://elahive.club/api/', // 接口路径
+
     initDom: function initDom() {
       // 调用实例
-      console.error(factoryMethods.formatDate('1562590479', 'yyyy-MM-dd HH:mm:ss'))
+      //console.error(factoryMethods.formatDate('1562590479', 'yyyy-MM-dd HH:mm:ss'))
       // factoryMethods.formatDate('1562590479', 'yyyy-MM-dd HH:mm:ss')
 
       Cookies.set('name', 'value', { expires: 7 });
@@ -184,7 +184,7 @@
       $.ajaxSetup({
         // type: 'POST',
         dataType: 'JSON',
-        contentType: 'application/x-www-form-urlencoded;charset=UTF-8',
+        contentType: 'application/json;charset=utf-8',
         timeout: 5000,
         cache:false,
         xhrFields: {
@@ -221,8 +221,26 @@
           withCredentials: false // 设置为true时开启cookies，但是方法会报错
         },
         success: function(res) {
-          // if() {
-            let info = res.transactions;
+            // TODO res及其必要元素判空等逻辑
+            // if () {
+            var info = res.data[0];
+
+            // 总奖金池
+            var amounts = parseFloat(info.amounts[0] + info.amounts[1]).toFixed(2);
+            $('.module-two').find('h4').empty().html('当前奖池<span>'+amounts+'</span>积分')
+
+            // 大盘指数
+            var dataTime = new Date(parseInt(info.id) * 1000);
+            var dataMonth = dataTime.getMonth() + 1;
+            var dataDate  = dataTime.getDate();
+            var dataHour = dataTime.getHours();
+            var dataMinute = dataTime.getMinutes();
+            $('.mark').html(dataMonth + '月' + dataDate + '日 大盘指数:<span class="mark-desc">12000  2.58%</span>');
+
+            // 价格波动 // TODO 可以考虑数字颜色——红涨绿跌，根据incressRate的正负识别涨跌
+            var incressRate = ((info.prices[1] - info.prices[0]) * 100 / info.prices[0]).toFixed(2);
+            $('.mark-desc').html(info.prices[0] + '   ' + incressRate + '%');
+
             // 进度百分比
             var leftPercent = $('.percent');
             var rightPercent = $('.right-percent');
@@ -233,10 +251,25 @@
             leftPercent.html(progressBar);
             rightPercent.animate(downProgressBar);
             rightPercent.html(downProgressBar);
-            // 总奖金池
-            $('.amounts').html(info.amounts[0]);
-            // 价格波动
-            $('.mark-desc').html(info.prices[0] + '-' + ((info.prices[1] - info.prices[0]) * 100 / info.prices[0]).toFixed(2) + '%');
+
+            // TODO cookies里需要存储竞猜选择及时间戳
+			// 根据时间及cookies识别——竞猜按钮/已竞猜/不能竞猜/竞猜结果
+            if (dataHour == 15 && dataMinute <= 30) {
+                // TODO 是否需要轮询接口以自动刷新？哪个接口及字段是结果？
+                // 15:00  到15:30  显示竞猜结果  判断依据是本地提交的记录,
+                //如果cookie没有值，提示当日预言已经截止，请15:30分后预言下一场
+            } else if (dataHour >= 12 && dataHour < 15) {
+                // TODO 识别cookies里的竞猜选择并展示文案
+                // 12:00  到15:00     不能竞猜，等待下一场,
+                //cookie有值显示，你已经预言"涨", 预计15:30分出结果
+                //界面显示。当日预言已经截止，请15:30分后预言下一场
+            } else {
+                // TODO 可以竞猜，需要识别cookies里的时间戳是否是本轮竞猜，是则禁止，不是则清理、允许用户竞猜、存储cookies
+                // T-1日的15：30到T日的12:00  ：
+                //先比较cookie,如果没有值可以竞猜，有值显示，你已经预言"", 预计15:30分出结果，
+                //如果没有值 界面显示 涨和跌的按钮
+            }
+
           // }
         },
         error: function(err) {
@@ -250,12 +283,14 @@
 
     // 点击档位，结果预览
     initBetUl: function initBetUl() {
-      var prodictResult = $('.prodict-result'), prodictStr= '', str = '猜对预计可得<span>40积分</span>和<span>2克星</span>，或在结果揭晓当日24点前选择<span>红包</span>，仅供参考';
+      var prodictResult = $('.prodict-result'), prodictStr= '', str = '猜对预计可得<span>40积分</span>，仅供参考';
       $('.bet-ul li').on('click', function(el) {
+		//TODO 这里记得修改7月9号的那个日期，那个日期是从api接口里面返回。
+		//点击涨和跌的时候记得使用内部浏览器打开www.baid.com即可。
         el.preventDefault();
         $(this).addClass('current').siblings('li').removeClass('current');
         var thisVal = $(this).data('value');
-        prodictStr = '猜对预计可得<span>' + thisVal + '</span>和<span>2克星</span>，或在结果揭晓当日24点前选择<span>红包</span>，仅供参考'
+        prodictStr = '猜对预计可得<span>' + thisVal + '</span>，仅供参考'
         prodictResult.empty().html(prodictStr);
       })
     },
